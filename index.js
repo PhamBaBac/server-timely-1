@@ -130,23 +130,17 @@ nodeCron.schedule("* * * * *", async () => {
 
     for (const taskDoc of tasksSnapshot.docs) {
       const taskData = taskDoc.data();
-      console.log(`Checking task: ${taskData}`);
       const { title, startDate, remind, startTime, uid } = taskData;
-      console.log(`Checking task1: ${startTime}`);
-      console.log(`Checking task: ${startDate}`);
-
-      // Lấy thông tin người dùng từ uid
       const userDoc = await db.collection("users").doc(uid).get();
       if (!userDoc.exists) {
         console.log(`User with UID ${uid} not found`);
-        continue; // Bỏ qua nếu người dùng không tồn tại
+        continue; 
       }
       const userData = userDoc.data();
       const fcmTokens = userData.tokens;
 
       if (!fcmTokens || fcmTokens.length === 0) {
-        console.log(`No FCM tokens found for user ${uid}`);
-        continue; // Nếu người dùng không có token, bỏ qua
+        continue;
       }
       const now = new Date();
       const remindTime = Number(remind) * 60 * 1000;
@@ -161,8 +155,8 @@ nodeCron.schedule("* * * * *", async () => {
         console.log(`Sending notification to user ${uid}...`);
         await handlerSendNotification({
           tokens: fcmTokens, // Gửi token của người dùng này
-          title: "Task Reminder",
-          body: `You have a task: ${title}`,
+          title: "Timely App",
+          body: `Nhắc nhở: ${title} sắp đến rồi!`,
           data: {
             taskId: taskDoc.id,
             uid: uid,
