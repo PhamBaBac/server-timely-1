@@ -60,115 +60,115 @@ app.post(
 );
 //lay ra cac task trong db
 
-const getAccessToken = () => {
-  return new Promise(function (resolve, reject) {
-    const key = require("./service-account.json");
-    const jwtClient = new JWT(
-      key.client_email,
-      null,
-      key.private_key,
-      ["https://www.googleapis.com/auth/cloud-platform"],
-      null
-    );
-    jwtClient.authorize(function (err, tokens) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(tokens.access_token);
-      console.log("token", tokens.access_token);
-    });
-  });
-};
-const handlerSendNotification = async ({ tokens, title, body, data }) => {
-  if (!Array.isArray(tokens)) {
-    tokens = [tokens];
-  }
+// const getAccessToken = () => {
+//   return new Promise(function (resolve, reject) {
+//     const key = require("./service-account.json");
+//     const jwtClient = new JWT(
+//       key.client_email,
+//       null,
+//       key.private_key,
+//       ["https://www.googleapis.com/auth/cloud-platform"],
+//       null
+//     );
+//     jwtClient.authorize(function (err, tokens) {
+//       if (err) {
+//         reject(err);
+//         return;
+//       }
+//       resolve(tokens.access_token);
+//       console.log("token", tokens.access_token);
+//     });
+//   });
+// };
+// const handlerSendNotification = async ({ tokens, title, body, data }) => {
+//   if (!Array.isArray(tokens)) {
+//     tokens = [tokens];
+//   }
 
-  for (const token of tokens) {
-    var myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", `Bearer ${await getAccessToken()}`);
+//   for (const token of tokens) {
+//     var myHeaders = new Headers();
+//     myHeaders.append("Content-Type", "application/json");
+//     myHeaders.append("Authorization", `Bearer ${await getAccessToken()}`);
 
-    var raw = JSON.stringify({
-      message: {
-        token: token,
-        notification: {
-          title,
-          body,
-        },
-        data: data,
-      },
-    });
+//     var raw = JSON.stringify({
+//       message: {
+//         token: token,
+//         notification: {
+//           title,
+//           body,
+//         },
+//         data: data,
+//       },
+//     });
 
-    var requestOptions = {
-      method: "POST",
-      headers: myHeaders,
-      body: raw,
-      redirect: "follow",
-    };
+//     var requestOptions = {
+//       method: "POST",
+//       headers: myHeaders,
+//       body: raw,
+//       redirect: "follow",
+//     };
 
-    fetch(
-      "https://fcm.googleapis.com/v1/projects/timely-d206d/messages:send",
-      requestOptions
-    )
-      .then((response) => response.json())
-      .then((result) => console.log(result))
-      .catch((error) => console.log("error", error));
-  }
-};
+//     fetch(
+//       "https://fcm.googleapis.com/v1/projects/timely-d206d/messages:send",
+//       requestOptions
+//     )
+//       .then((response) => response.json())
+//       .then((result) => console.log(result))
+//       .catch((error) => console.log("error", error));
+//   }
+// };
 
-nodeCron.schedule("* * * * *", async () => {
-  try {
-    console.log("Checking for due tasks...");
+// nodeCron.schedule("* * * * *", async () => {
+//   try {
+//     console.log("Checking for due tasks...");
 
-    // Lấy danh sách task chưa thông báo
-    const tasksSnapshot = await db
-      .collection("tasks")
-      .where("notified", "==", false)
-      .get();
+//     // Lấy danh sách task chưa thông báo
+//     const tasksSnapshot = await db
+//       .collection("tasks")
+//       .where("notified", "==", false)
+//       .get();
 
-    for (const taskDoc of tasksSnapshot.docs) {
-      const taskData = taskDoc.data();
-      const { title, startDate, remind, startTime, uid } = taskData;
-      const userDoc = await db.collection("users").doc(uid).get();
-      if (!userDoc.exists) {
-        console.log(`User with UID ${uid} not found`);
-        continue; 
-      }
-      const userData = userDoc.data();
-      const fcmTokens = userData.tokens;
+//     for (const taskDoc of tasksSnapshot.docs) {
+//       const taskData = taskDoc.data();
+//       const { title, startDate, remind, startTime, uid } = taskData;
+//       const userDoc = await db.collection("users").doc(uid).get();
+//       if (!userDoc.exists) {
+//         console.log(`User with UID ${uid} not found`);
+//         continue; 
+//       }
+//       const userData = userDoc.data();
+//       const fcmTokens = userData.tokens;
 
-      if (!fcmTokens || fcmTokens.length === 0) {
-        continue;
-      }
-      const now = new Date();
-      const remindTime = Number(remind) * 60 * 1000;
-      const taskTime = new Date(startTime).getTime();
-      const timeDate = new Date(startDate).getDate();
-      const timeDiff = taskTime - now.getTime();
-      if (
-        timeDiff > 0 &&
-        timeDiff <= remindTime &&
-        timeDate === now.getDate()
-      ) {
-        console.log(`Sending notification to user ${uid}...`);
-        await handlerSendNotification({
-          tokens: fcmTokens, // Gửi token của người dùng này
-          title: "Timely App",
-          body: `Nhắc nhở: ${title} sắp đến rồi!`,
-          data: {
-            taskId: taskDoc.id,
-            uid: uid,
-          },
-        });
-        await db.collection("tasks").doc(taskDoc.id).update({ notified: true });
-      }
-    }
-  } catch (error) {
-    console.error("Error sending notifications:", error);
-  }
-});
+//       if (!fcmTokens || fcmTokens.length === 0) {
+//         continue;
+//       }
+//       const now = new Date();
+//       const remindTime = Number(remind) * 60 * 1000;
+//       const taskTime = new Date(startTime).getTime();
+//       const timeDate = new Date(startDate).getDate();
+//       const timeDiff = taskTime - now.getTime();
+//       if (
+//         timeDiff > 0 &&
+//         timeDiff <= remindTime &&
+//         timeDate === now.getDate()
+//       ) {
+//         console.log(`Sending notification to user ${uid}...`);
+//         await handlerSendNotification({
+//           tokens: fcmTokens, // Gửi token của người dùng này
+//           title: "Timely App",
+//           body: `Nhắc nhở: ${title} sắp đến rồi!`,
+//           data: {
+//             taskId: taskDoc.id,
+//             uid: uid,
+//           },
+//         });
+//         await db.collection("tasks").doc(taskDoc.id).update({ notified: true });
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error sending notifications:", error);
+//   }
+// });
 
 app.listen(PORT, () => {
   console.log(`Server starting at http://localhost:${PORT}`);
